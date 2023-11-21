@@ -1,0 +1,35 @@
+trigger AccountTrigger on Account(after update){
+    
+    Map<Id,Account> accMap = new Map<Id,Account>
+    
+    if(Trigger.isAfter && Trigger.isUpdate){
+        
+        if(!Trigger.new.isEmpty()){
+            
+            for(Account acc : trigger.new){
+                
+                if(trigger.oldMap.get(acc.id).phone!=acc.phone){
+                    
+                    accMap.put(acc.id,acc);
+                }
+            }
+        }
+    }
+    
+    List<contact> conList = [select Id,name,phone,AccountId from contact where AccountId IN:accMap.keyset()];
+    
+    List<contact> listtoUpdate = new List<contact>();
+    if(!conList.isEmpty()){
+        
+        for(contact con:conList){
+            
+            con.phone = accMap.get(con.AccountId).phone;
+            listtoUpdate.add(con)
+            
+        }
+        
+        if(!listtotupdate.isEmpty()){
+            update listToUpdate;
+        }
+    }
+}

@@ -1,0 +1,42 @@
+//whenever a contact description field is updated then ts parent account's description field should also be update
+
+
+trigger ContactTrigger on Contact(after update){
+    
+    Set<Id> accIds = new Set<Id>();
+    
+    if(Trigger.isAfter && Trigger.isUpdate){
+        
+        if(!trigger.new.isEmpty()){
+            
+            for(contact con: trigger.new){
+                
+                if(con.AccountId!=null && trigger.oldMap.get(con.Id).description!= con.description){
+                    
+                    accIds.add(con.AccountId);
+                }
+            }
+        }
+    }
+
+    if(!accIds.isEmpty){    
+    Map<Id,Account> mapAcc = [(select id, name ,phone ,description from Account where Id in:accIds)];
+    
+    List<Account> listtoUpdate = new List<Account>();
+    
+    if(!trigger.new.isEmpty()){
+        
+        for(contact cont:trigger.new){
+            
+            Account acc = mapAcc.get(cont.AccountId);
+            acc.Description = cont.description;
+			listtoupdate(acc)            
+        }
+    }
+    }
+    
+    if(!listtoupdate.isEmpty()){
+        update listtoupdate;
+    }
+
+}

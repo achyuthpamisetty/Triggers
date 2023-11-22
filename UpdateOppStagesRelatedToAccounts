@@ -1,0 +1,44 @@
+//we cannot edit the createdDate field so wee need to create custom createdDate field
+
+trigger AccountTrigger on Account (after update){
+
+    Set<Id> accIds = new Set<Id>();
+
+    if(Trigger.isAfter && Trigger.isUpdate){
+
+        if(!trigger.new.isEmpty){
+
+            for(Account acc: trigger.new){
+
+                accIds.add(acc.Id);
+            }
+        }
+    }
+
+    if(!accIds.isEmpty()){
+
+        Date day30 = date.today()-30; //date which is 30 days less than today
+
+        List<Opportunity> listUpdate = new List<Opportunity>();
+
+        List<Opportunity> oppList = [select id, AccountId, TestCreatedDate,stagename from Opportunity where AccountId in:accIds];
+
+        if(!oppList.isEmpty()){
+
+            for(Opportunity opp: oppList){
+
+                if(opp.TestCreatedDate < day30 && opp.stageName == ' Closed Won'){
+
+                    opp.stageName = 'closed lost';
+                    opp.closeDate = date.today();
+                    listUpdate.add(opp);
+                }
+            }
+        }
+
+        if(!listUpdate.isEmpty()){
+            update listUpdate;
+        }
+
+    }
+}

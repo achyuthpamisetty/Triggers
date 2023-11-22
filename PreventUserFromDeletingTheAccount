@@ -1,0 +1,16 @@
+trigger AccountTrigger on Account(before delete){
+
+    if(Trigger.isBefore && Trigger.isDelete){
+
+        if(!trigger.old.isEmpty()){
+
+            for(Account acc: trigger.old){
+
+                if(acc.ActiveCheck == true){
+
+                    acc.addError('You cannot delete the Active Account');
+                }
+            }
+        }
+    }
+}

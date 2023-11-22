@@ -1,0 +1,63 @@
+public with sharing class caseTriggerHelperClass{
+
+    public static void updateCaseNumber(List<case> caseList){
+
+        Set<Id> accIds = new Set<Id>(); //to store the parent Account Id's
+
+        if(!caseList.isEmpty()){
+
+            for(case cs: caseList){
+
+                if(cs.AccountId != null){
+
+                    accIds.put(cs.AccountId);
+                }
+            }
+        }
+    }
+
+    if(!accIds.isEmpty()){
+
+        Map<Id,Account> mapAcc = new mapAcc<Id,Account>([select id, LatestCaseNumber from Account where AccountId IN:accIds]);
+
+        Map<Id,Account> mapToUpdate = new Map<Id,Account>();
+
+        if(!caseList.isEmpty()){
+
+            for(Case caseRec : caseList){
+            
+                if(mapAcc.containsKey(caseRec.AccountId)){
+
+                    Account acc  = mapAcc.get(caseRec.AccountId);
+
+                    if(acc.LatestCaseNumber != caseRec.CaseNumber ){
+
+                        acc.LatestCaseNumber = caseRec.CaseNumber;
+
+                        mapToUpdate.put(acc.Id,acc);
+                    }
+                }
+            }
+        }
+        if(!mapToUpdate.isEmpty()){
+
+            update mapToUpdate;
+        }
+    }
+}
+
+
+
+
+//Trigger
+
+trigger CaseTrigger on Case(after Insert){
+
+    if(Trigger.isAfter && Trigger.isInsert){
+
+        if(!trigger.new.isEmpty()){
+
+            caseTriggerHelperClass.updateCaseNumber(trigger.new);
+        }
+    }
+}

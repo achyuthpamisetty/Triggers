@@ -1,0 +1,81 @@
+public class TriggerHelper{
+
+    public static void updateTrigger(List<Employee> EmpList,Map<Id,Employee>,oldMap){
+
+        Set<Id> parentIds = new Set<Id>();
+
+        if(!EmpList.isEmpty()){
+
+            for(Employee newEmp : EmpList){
+
+                if(oldMap != null){
+
+                    Employee oldMap = oldMap.get(newEmp.Id);
+
+                    if(oldEmp.TechFirm != newEmp.TechFirm){
+
+                        parentIds.add(oldEmp.TechFirm);
+                        parentIds.add(newEmp.TechFirm);
+                    }
+
+                    else{
+
+                        parentIds.add(newEmp.TechFirm);
+                    }
+                }
+                else{
+
+                    parentIds.add(newEmp.TechFirm);
+
+                }
+            }
+        }
+
+        List<AggregateResult> aggrList = [select TechFirm tfId, max(Salary__c) maxSalary, min(Salary__c) minSalary from Employee where techfirm IN:parentIds group by TechFirm];
+
+        Map<Id,TechFirm> mapUpdate = new Map<id,TechFirm>();
+
+        //below code helps to make the fields to zero value when there are no related records
+
+        for(Id ids : parentIds){
+            TechFirm tf = new TechFirm();
+            tf.Id = ids;
+            tf.maxSalary = 0;
+            tf.minSalary = 0;
+            mapUpdate.put(tf.id,tf);
+        }
+
+        if(!aggrList.isEmpty()){
+
+            for(AggregateResult aggr: aggrList){
+
+                TechFirm tf = new TechFirm();
+                tf.Id = (Id)aggr.get('tfId');
+                tf.max_Salary = (Decimal)aggr.get('maxSalary');
+                tf.min_Salary = (Decimal)aggr.get('minSalary');
+                mapUpdate.add(tf.Id,tf);
+            }
+        }
+
+        if(!mapUpdate.isEmpty){
+            update mapUpdate;
+        }
+    }
+}
+
+
+//Trigger
+
+trigger EmployeeTrigger on Employee(after insert,after update,after delete,after undelete){
+
+    if(trigger.isAfter && trigger.isUpdate){
+
+        TriggerHelper.updateTrigger(trigger.new,trigger.oldMap);
+    }
+    else if(trigger.isAfter && trigger.isDelete){
+        TriggerHelper.updateTrigger(trigger.old,null);
+    }
+    else{
+        TriggerHelper.updateTrigger(trigger.new,null);
+    }
+}

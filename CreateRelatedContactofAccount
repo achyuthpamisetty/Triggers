@@ -1,0 +1,29 @@
+trigger AccountTrigger on Acocunt(after insert,after update){
+
+
+    List<contact> conList = new List<contact>();
+
+    if(trigger.isAfter && (trigger.isInsert || trigger.isUpdate)){
+
+        if(!trigger.new.isEmpty()){
+
+            for(Account acc: trigger.new){
+
+                if(acc.ContactCheck == true){
+
+                    Contact con = new Contact();
+
+                    con.Phone = acc.Phone;
+                    con.FirstName = 'test';
+                    con.LastName = acc.Name;
+                    con.AccountId = acc.id;
+                    conList.add(con);
+
+                }
+            }
+        }
+        if(!conList.isEmpty()){
+            insert conList
+        }
+    }
+}

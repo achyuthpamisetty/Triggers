@@ -1,0 +1,73 @@
+trigger countContacts on Contact (after insert,after update,after undelete,after delete)
+{
+     Set<Id> accIds = new Set<Id>();  //to store parent account Id's
+
+    if(Trigger.isAfter && (Trigger.isInsert || Trigger.isUndelete)){
+
+        if(!trigger.new.isEmpty()){
+
+            for(contact con:trigger.new){
+
+                if(con.AccountId!=null){
+
+                    accIds.add(con.AccountId);   //add the accounts in the set
+                }
+            }
+        }
+
+    }
+
+    if(trigger.isAfter && trigger.isUpdate){
+
+        if(!trigger.new.isEmpty()){
+
+            for(contact con: trigger.new){
+
+                if(con.AccountId!= trigger.oldMap.get(con.id).AccountId){  //Compare the new parent account with old parent account
+
+                    if(trigger.oldMap.get(con.id).AccountId!=null){
+
+                        accIds.add(trigger.oldMap.get(con.id).AccountId);
+                    }
+
+                    if(con.AccountId!= null){          //New Parent Account
+
+                        accIds.add(con.AccountId);
+                    }
+                }
+            }
+        }
+    }
+
+    if(trigger.isAfter && trigger.isDelete){
+
+        if(!trigger.old.isEmpty()){
+
+            for(contact con:trigget.old){
+
+                if(con.AccountId!=null){
+
+                    accIds.add(con.AccountId);
+                }
+            }
+        }
+    }
+
+    if(!accIds.isEmpty()){
+
+        List<Account> accList = [select id,NumberofContacts,(select id from contcats) from Account where Id in:accIds];
+        List<Account> listUpdate = new List<Account>();
+
+        if(!accList.isEmpty()){
+            for(Account acc: accList){
+                acc.NumberofContacts = acc.Contacts.size();
+                listupdate.add(acc);
+            }
+        }
+
+        if(!listUpdate.isEmpty()){
+            update listUpdate;
+        }
+    }
+
+}

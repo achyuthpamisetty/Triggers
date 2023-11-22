@@ -1,0 +1,40 @@
+trigger AccountTrigger on Account(before insert,before update){
+
+    Set<string> accNames = new Set<string>(); 
+
+    if(trigger.isBefore && (trigger.isInsert || trigger.isUpdate)){
+
+        if(!trigger.new.isempty()){
+
+            for(Acocunt acc:trigger.new){
+
+                accNames.add(acc.Name);
+
+            }
+        }
+    }
+
+    List<Account> accList = [select id,name from Account where name:accNames];
+
+    Map<String,Account> existingAccMap = new Map<string,Account>();  //used string because to store name data type
+
+    if(!accList.isEmpty){
+
+        for(Account acct: accList){
+
+            existingAccMap.add(acc.Name,acct);
+
+        }
+
+        if(!trigger.new.isEmpty){
+
+            for(Account accObj : trigger.new){
+
+                if(existingAccMap.containsKey(accObj.Name)){
+
+                    accObj.addError('Account Already exists');
+                }
+            }
+        }
+    }
+}

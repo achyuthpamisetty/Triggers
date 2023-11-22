@@ -1,0 +1,69 @@
+trigger contactTrigger on contact(before insert,before update){
+
+    Map<String,contact> emailMap = new Map<String,contact>();
+    Map<String,contact> PhoneMap = new Map<String,contact>();
+
+    if(trigger.isBefore && trigger.isInsert){
+
+        if(!trigger.new.isEmpty()){
+
+            for(contact con:trigger.new){
+
+                emailMap.put(con.email,con);
+                phoneMap.put(con.phone,con);
+            }
+        }
+    }
+
+    if(trigger.isBefore && trigger.isUpdate){
+
+        if(!trigger.new.isEmpty()){
+
+            for(contact con: trigger.new){
+
+                if(trigger.oldMap.get(con.Id).email != con.Email){
+                    emailMap.put(con.Email,con);
+
+                }
+                if(trigger.oldMap.get(con.Id).phone != con.phone){
+                    phoneMap.put(con.phone,con);
+                }
+            }
+        }
+    }
+
+    String errorMessage='';
+    
+    List<contact> existingRecords = [select Id,email, Phone from contact where Email IN: emailMap.keyset() or Phone IN:phoneMop.keyset()];
+
+    if(!existingRecords.isEmpty()){
+
+        for(Contact conObj: existingRecords){
+
+            if(conObj.email != null){
+
+                if(emailMap.get(conObj.Email) !=null){
+
+                    errorMessgae ='Email';
+
+                }
+                if(PhoneMap.get(conObj.phone) != null){
+
+                    errorMessage = errorMessage+(errorMessage != '' ? ' and Phone' : 'Phone');
+                }
+            }
+        }
+    }
+
+    if(!trigger.new.isEmpty()){
+
+        for(contact objCon:trigger.new){
+
+            if(errorMessage != ''){
+
+                objCon.addError('Your Contact'+errorMessge+ 'already exists in system' )
+
+            }
+        }
+    }
+}

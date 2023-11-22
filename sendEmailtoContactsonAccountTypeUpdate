@@ -1,0 +1,59 @@
+public class AccountTriggerHelper{
+
+    public static void AccountType(List<Account> accList, Map<Id,Account> oldMap){
+
+        Set<Id> accIds = new Set<Id>();
+
+        if(!accList.isEmpty()){
+
+            for(Account acc: accList){
+
+                if(acc.Type != trigger.oldMap.get(acc.id).Type){
+
+                    accIds.put(acc.Id);
+                }
+            }
+        }
+    }
+
+    List<contact> conList = [select id, email, AccountId,LastName from contact where AccountId IN:accIds];
+
+    List<Messaging.SingleEmailMessage> emailList = new List<Messaging.SingleEmailMessage>();
+
+    if(!conList.isEmpty()){
+
+        for(contact con: conList){
+
+            if(con.Email != null){
+
+                Messaging.SingleEmailMessage mail = new Messaging.SingleEmailMessage();
+                mail.setTargetObjectId(con.Id);
+                mail.senderDisplayName('system Administartor');
+                mail.subject('Account Update Info');
+
+
+                string body = 'Dear '+ con.LastName + ',<br/>';
+                body += 'Your account type has bee updated successfully';
+                mail.setHtmlBody(body);
+                mail.toAddresss = new string[]{con.Email};
+                emailList.add(mail);
+            }
+        }
+    }
+    if(!emailList.isEmpty){
+        Messaging.sendEmail(emailList);
+    }
+}
+
+
+//Trigger
+
+trigger emailTrigger on Account(after update){
+
+    if(Trigger.isAfter && trigger.isUpdate){
+
+        for(Account acct : trigger.new){
+
+        AccountTriggerHelper.AccountType(trigger.new,trigger.oldMap);
+    }
+}}

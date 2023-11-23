@@ -1,0 +1,73 @@
+public class triggerHandler{
+
+    public static void triggerMethod(List<OpportunityLineItem>,oliList){
+
+        Set<Id> oppId = new Set<Id>();
+        Map<Id,Decimal> oliMap = new Map<id,Decimal>();
+        List<Account> listUpdate = new List<Account>();
+
+        if(!oliList.isEmpty()){
+
+            for(OpportunityLineItem oliObj: oliList){
+
+                oppId.add(oliObj.OpportunityId);
+
+            }
+        }
+
+        if(!oppId.isEmpty()){
+
+            List<Opportunity> oppList = [select id, AccountId from Opportunity where ID IN:oppId];
+
+            if(!oppList.isEmpty()){
+
+                for(Opportunity oppObj :oppList){
+
+                    oliMap.put(oppObj.AccountId,0);
+                }
+            }
+
+            for(AggregateResult aggr: [select coount(id) oli,opportunity.AccountId from OpportunityLineItem where opportunity.AccountId in:
+                                        oliMap.keySet() group by opportunity.AccountId]){
+
+            oliMap.put((Id)aggr.get('AccountId'),(Decimal)aggr.get('oli'));
+
+          }
+
+          for(id accIds : oliMap.keySet()){
+
+            Account acc = new Account();
+            acc.Id = accIds;
+            acc.NumberofProducts = oliMap.get(accIds);
+            listUpdate.add(acc);
+          }
+        
+        }
+        if(!listUpdate.isEmpty()){
+
+            try{
+                update listUpdate;
+            }catch(Exception e){
+                system.debug('error while updating account records-->'+ex.getMessage());
+            }
+            
+        }
+
+
+    }
+}
+
+//trigger
+
+trigger ChildTrigger on OpportunityLineItem (after insert,after delete){
+
+    if(trigger.isAfter && trigger.isInsert){
+        triggerHandler.triggerMethod(trigger.new);
+
+    }
+
+    if(trigger.isAfter && trigger.isDelete){
+        triggerHandler.triggerMethod(trigger.old);
+
+    }
+}

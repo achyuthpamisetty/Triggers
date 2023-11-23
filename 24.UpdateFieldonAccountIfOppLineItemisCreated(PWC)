@@ -1,0 +1,65 @@
+public class triggerHandler{
+
+    public static void triggerMethod(List<OpportunityLineItem> oliList){
+
+        Set<id> oppIds = new Set<Id>();
+        
+
+        if(!oliList.isEmpty){
+
+            for(OpportunityLineItem oli: oliList){
+
+                oppIds.add(oli.opportunityId);
+            }
+        }
+
+        if(!oppIds.isEmpty()){
+
+            List<Opportunity> oppList = [select id, AccountId from Opportunity where ID IN:oppIds];
+            Map<Id,Decimal> countMap = new Map<Id,Decimal>();
+            List<Account> listUpdate = new List<Account>();
+
+            for(Opportunity opp: oppList){
+
+                countMap.put(opp.AccountId,0);
+
+            }
+
+            for(AggregateResult aggr: [select COUNT(Id) oli,opportunity.AccountId from OpportunityLineItem where Opportunity.AccountId != NULL
+                                        and Opportunity.AccountId IN: countMap.keySet() and ListPrice > 50000 group by opportunity.AccountId]){
+
+
+                                            countMap.put((Id)aggr.get('AccountId'),(Decimal)aggr.get('oli'));
+                                        }
+
+                for(ID ids: countMap.keySet()){
+
+                        Account acc = new Account();
+                        acc.Id = ids;
+                        acc.NumberofProducts = countMap.get(ids);
+                        listUpdate.add(acc);
+                }
+
+                if(!listUpdate.isEmpty()){
+                    update listUpdate;
+                }
+        }
+    }
+}
+
+
+//Trigger
+
+trigger countTrigger on OpportunityLineItem(after insert, after delete){
+
+    if(trigger.isAfter){
+        if(trigger.isInsert){
+
+            triggerHandler.triggerMethod(trigger.new);
+
+        }
+        if(trigger.isDelete){
+            triggerHandler.triggerMethod(trigger.old);
+        }
+    }
+}

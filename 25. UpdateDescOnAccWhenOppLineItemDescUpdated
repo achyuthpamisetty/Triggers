@@ -1,0 +1,68 @@
+public class triggerHandler{
+
+    public static void triggerMethod(List<OpportunityLineItem> oliList){
+
+        Set<Id> oppIds = new Set<Id>();
+
+        if(!oliList.isEmpty()){
+
+            for(OpportunityLineItem oli:oliList){
+
+                if(String.isNotBlank(oli.description){
+
+                    oppIds.add(oli.opportunityId);
+                }
+            }
+        }
+
+        if(!oppIds.isEmpty()){
+
+            Map<Id,string> accMap = new Map<id,string>();
+            List<Account> listUpdate = new List<Account>();
+
+            for(Opportunity opp: [select AccountId,(select description from opportunityLineItems order by LastModifiedDate desc limit 1)
+            from Opportunity where ID IN:oppIds])
+
+            if(!opp.OpportunityLineItems.isEmpty()){
+
+                if(string.isNotBlank(opp.OpportunityLineItems[0].description)){
+
+                    accMap.put(opp.AccountId,opp.OpportunityLineItems[0].description);
+                }
+            }
+            else{
+
+                accMap.put(opp.AccountId,'there are no opportunityLineItem records present');
+            }
+        }
+        for(Id accIds: accMap.keySet()){
+            Account acc = new Account();
+            acc.Id = accIds;
+
+            String latestDescription = accMap.get(accIds);
+
+            if(string.isNotBlank(latestDescription)){
+
+                acc.Description = latestDescription;
+                listUpdate.add(acc);
+
+            }
+        }
+
+        if(!listUpdate.isEmpty()){
+            update listUpdate;
+        }
+    }
+}
+
+//Trigger
+
+trigger DescTrigger on OpportunityLineItem(after insert,after update, after delete){
+
+    if(trigger.isAfter && (trigger.isInsert || trigger.isUpdate )){
+
+        triggerHandler.triggerMethod(trigger.new);
+    }
+    if(trigger.isAfter && trigger.isDelete){
+        triggerHandler.triggerMethod(trigger.old);
+}

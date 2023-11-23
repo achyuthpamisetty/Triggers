@@ -1,0 +1,64 @@
+public class triggerHelper{
+
+    public static void triggerMethod(List<Account> accList){
+
+        List<contact> conList = new List<contact>();
+        Set<Id> accIds = new Set<Id>();
+        Map<Id,Account> mapAcc = new Map<Id,Account>();
+        List<Account> listUpdate = new List<Account>();
+
+        if(!acclist.isEmpty()){
+
+            for(Account acc : accList){
+
+                contact conObj = new contact();
+                conObj.LastName = 'Tset '+acc.Name;
+                conObj.AccountId = acc.Id;
+                conList.add(conObj);
+                accIds.add(acc.id);
+
+            }
+
+            if(!conList.isEmpty()){
+                insert conList;
+            }
+        }
+
+        if(!accIds.isEmpty){
+
+            List<Account> accList = [select id, clientcontact from Account where ID IN:accIds];
+
+            if(!accList.isEmpty()){
+
+                for(Account accObj:accList){
+
+                    mapAcc.put(accObj.Id,accObj);
+                }
+            }
+
+            if(!conList.isEmpty()){
+
+                for(contact con:conList){
+                    if(mapAcc.containsKey(con.AccountId)){
+                        Account acc = mapAcc.get(con.AccountId);
+                        acc.clientcontact = con.Id;
+                        listUpdate.add(acc);
+                    }
+                }
+            }
+            if(!listUpdate.isEmpty()){
+                update listUpdate;
+            }
+        }
+    }
+}
+
+//Trigger
+
+trigger accountTrigger on Account(after insert){
+
+    if(trigger.isAfter && trigger.isInsert){
+
+        triggerHelper.triggerMethod(trigger.new);
+    }
+}

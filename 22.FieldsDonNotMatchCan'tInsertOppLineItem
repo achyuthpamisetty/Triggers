@@ -1,0 +1,50 @@
+public class triggerHandler{
+
+    public static void triggerMethod(List<OpportunityLineItem> oliList){
+
+        Set<Id> oppIds = new Set<Id>();
+        Set<Id> proIds = new Set<Id>();
+
+        if(!oliList.isEmpty()){
+
+            for(OpportunityLineItem oli: oliList){
+
+                oppIds.add(oli.opportunityId);
+                proIds.add(oli.Product2Id);
+            }
+        }
+
+        if(!oppIds.isEmpty() && !proIds.isEmpty()){
+
+            Map<Id,Opportunity> oppMap = new Map<Id,Opportunity>([select id, productFamily from opportunity where ID IN : oppIds]);
+
+            Map<Id,product2> proMap = new Map<Id,Product2>([select id,family from Product2 where id IN :proIds ]);
+
+            if(!oliList.isEmpty()){
+
+                for(Opportunity oliObj: oliList){
+
+                    if(oppMap.containsKey(oliObj.OpportunityId) && proMap.containsKey(oliObj.Product2Id)
+                        oppMap.get(oliObj.OpportunityId.productFamily != proMap.get(oliObj.Product2Id.family)){
+
+                            oliObj.addError('Famil & Product Family are not same');
+                        }
+                }
+            }
+        }
+    }
+}
+
+
+//Trigger
+
+trigger oliTrigger on OpportunityLineItem(before insert){
+
+    if(trigger.isBefore && trigger.isInsert){
+
+        if(!trigger.new.isEmpty){
+
+            triggerHandler.triggerMethod(trigger.new);
+        }
+    }
+}

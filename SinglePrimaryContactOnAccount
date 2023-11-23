@@ -1,0 +1,72 @@
+public class ContactTriggerHelper{
+
+    public static void PrimaryContactTrigger(List<contact> conList,Map<Id,contact> oldMap){
+
+        Set<Id> accIds = new Set<Id>();
+
+        Map<Id,Integer> conMap = new Map<Id,Integer>();
+
+        if(!conList.isEmpty){
+
+            for(contact con: conList){
+
+                if(oldMap != null){
+
+                    contact oldCon = oldMap.get(con.Id);
+
+                    if(oldCon.AccountId != con.AccountId){
+
+                        accIds.put(oldCon.AccountId);
+                        accIds.put(con.AccountId);
+                    }
+                    else {
+                        accIds.put(con.AccountId);
+                    }
+                }
+                else{
+                    accIds.put(con.AccountId);
+                }
+            }
+        }
+
+        if(!accIds.isEmpty){
+
+            List<Contact> contactList = [select id,AccountId,primarycontact from Contact where AccountId IN:accIds and primarycontact = true];
+
+            if(!contactList.isEmpty()){
+
+                for(contact conObj : contactList){
+
+                    conMap.put(conObj.AccountId,contactList.size());
+                }
+
+                for(contact errorcon: conList){
+
+                    if(errorcon.primarycontact == true && conMap.containsKey(errorcon.AccountId) && conMap.get(errorcon.AccountId)>0){
+
+                        errorcon.addError('Account cannot have more than one primary contact')
+
+                    }
+                }
+            }
+
+        }
+    }
+}
+
+//Trigger
+
+trigger primaryTrigger on contact (before insert, before update){
+
+    if(trigger.isBefore && trigger.isUpdate){
+
+        ContactTriggerHelper.PrimaryContactTrigger(trigger.new,trigger.oldMap)
+
+    }
+    else{
+        if(trigger.isBefore && trigger.isInsert){
+        
+        ContactTriggerHelper.PrimaryContactTrigger(trigger.new,null)
+    }
+    
+}

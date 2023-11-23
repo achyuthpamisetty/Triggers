@@ -1,0 +1,89 @@
+public class triggerHandler{
+
+    public static void triggerMethod(List<Opportunity> OppList, Map<Id,Opportunity> oldMap){
+
+        Set<Id> oppIds = new Set<Id>();
+
+        List<Task> taskListUpdate = new List<Task>();
+        List<Task> listInsert = new List<Task>();
+
+        if(!OppList.isEmpty()){
+
+            for(Opportunity opp: OppList){
+
+                if(opp.StageName != oldMap.get(opp.id).StageName){
+
+                    oppIds.add(opp.Id);
+                }
+            }
+        }
+
+        if(!oppIds.isEmpty()){
+
+            List<Task> tskList = [select id, whatId,description from Task where WhatId IN: oppIds];
+
+            Map<Id,Task> tskMap = new Map<Id,Task>();
+
+
+
+            if(!tskList.isEmpty()){
+
+                for(Task tsk : tskList){
+
+                    tskMap.put(tsk.WhatId,tsk);
+                }
+            }
+
+            for(Opportunity oppObj: oppLits){
+
+                if(oppObj.StageName != oldMap.get(oppObj.id).StageName){
+
+                    Task newTask;
+
+                    if(tskMap.containsKey(oppObj.Id)){
+
+                        newTask = tskMap.get(oppObj.id);
+                        newTask.Description = 'Opportunity'+oppObj.Name+'has been updated to stage '+ oppObj.StageName + 'Follow up accodingly';
+                        taskListUpdate.add(newTask);
+                    }
+                    else{
+
+                        newTask = new Task();
+                        newTask.subject = 'Follow up on Opportunity' +oppObj.Name;
+                        newTask.description = 'Opportunity'+oppObj.Name+'has been updated to stage '+ oppObj.StageName + 'Follow up accodingly';
+                        newTask.OwnerId = UserInfo.getUserId();
+                        newTask.WhatId = oppObj.Id;
+                        newTask.ActivityDate = date.today();
+                        newTask.Status = 'Not Started';
+                        listInsert.add(newTask);
+                    }
+                }
+            }
+
+            try{
+
+                if(!taskListUpdate.isEmpty()){
+                    update taskListUpdate;
+                }
+
+                if(!listInsert.isEmpty()){
+                    insert listInsert;
+                }
+            }
+            catch(exception e){
+                system.debug('error while inserting or updating the records :'+ex.getMessage());
+            }
+        }
+    }
+}
+
+//Trigger
+
+trigger TaskTrigger on Opportunity(after update){
+
+    if(trigger.isAfter && trigger.isUpdate){
+
+        triggerHandler.triggerMethod(trigger.new,trigger.oldMap);
+
+    }
+}

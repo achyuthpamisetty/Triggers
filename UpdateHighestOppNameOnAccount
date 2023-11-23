@@ -1,0 +1,86 @@
+public class OppotunityHelper{
+
+    public static void OpportunityMethod(List<Opportunity> OppList,Map<Id,Opportunity> oldMap){
+
+        Set<Id> accIds = new Set<Id>();
+
+        if(!OppList.isEmpty()){
+
+            for(Opportunity Opp : OppList){
+
+                if(oldMap!=null){
+
+                    Opportunity oldOpp = oldMap.get(newOpp.Id);
+
+                    if(oldOpp.AccountId != newOpp.AccountId){
+
+                        accIds.add(oldOpp.AccountId);
+                        accIds.add(newOpp.AccountId);
+                    }
+                    else{
+                        accIds.add(newOpp.AccountId);
+                    }
+                }
+                else{
+
+                    accIds.add(newOpp.AccountId);
+                }
+            }
+        }
+
+        if(!accIds.isEmpty()){
+
+            List<Account> accList = [select maxOpp, (select name,Amount from Opportunities where Amount != null order by Amount desc Limit 1)
+                                    from Account where ID IN:accIds];
+
+            List<Account> listUpdate = new List<Account>();
+
+            if(!accList.isEmpty()){
+
+                for(Account acc : accList){
+
+                    for(!acc.Opportunities.isEmpty){
+
+                        acc.maxOpp = acc.Opportunities[0].Name;
+                        listUpdate(acc);
+                    }
+                    else{
+
+                        acc.maxOpp = '';
+                        listUpdate(acc);
+                    }
+                }
+            }
+
+            if(!listupdate.isEmpty()){
+
+                update listUpdate;
+            }
+        }
+    }
+}
+
+
+//Trigger
+
+trigger maxOppTrigger on Opportunity(after insert,after update,after delete,after undelete){
+
+    if(Trigger.isAfter && trigger.isUpdate){
+
+        OppotunityHelper.OpportunityMethod(trigger.new,trigger.oldMap);
+    }
+    else
+    {
+        if(Trigger.isAfter && trigger.isDelete)
+        {
+            OppotunityHelper.OpportunityMethod(trigger.old,null);
+        }
+    }
+    else
+    {
+        if(Trigger.isAfter && (trigger.isInsert || trigger.isUndelete))
+        {
+            OppotunityHelper.OpportunityMethod(trigger.new,null);
+        }
+    }
+}

@@ -1,0 +1,53 @@
+public class triggerHelper{
+
+    public static void triggerMethod(List<Account> accList,Map<Id,Account> oldMap){
+
+        Set<Id> accIds = new Set<Id>();
+
+        if(!accList.isEmpty()){
+
+            for(Account acc: accList){
+
+                if(acc.closeAllOpps == true && oldMap.containsKey(acc.Id) && oldMap.get(acc.Id).closeAllOpps){
+
+                    accIds.add(acc.Id);
+                }
+            }
+        }
+
+        if(!accIds.isEmpty()){
+
+            List<Opportunity> oppList = [select id, AccountId,stagename from Opportunity where AccountId in: accIds and stagename != 'closed won'
+                                        and probabilty >= 70];
+
+            List<Opportunity> oppListUpdate = new List<Opportunity>();
+
+            if(!oppList.isEmpty()){
+
+                for(Opportunity opp: oppList){
+
+                    opp.StageName = 'closed won';
+                    opp.CloseDate = date.today();
+                    oppListUpdate.ADD(opp);
+                }
+            }
+
+            if(!oppListUpdate.isEmpty()){
+
+                update oppListUpdate;
+            }
+        }
+    }
+}
+
+
+//Trigger
+
+trigger checkboxTrigger on Account(after update){
+
+    if(Trigger.isAfter && Trigger.isUpdate){
+
+        triggerHelper.triggerMethod(Trigger.new,trigger.oldMap);
+
+    }
+}

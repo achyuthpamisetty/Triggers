@@ -1,0 +1,50 @@
+public class triggerHandler{
+
+    public static void triggerMethod(List<OpportunityLineItem> oliList){
+
+        Set<Id> oppId = new Set<id>();
+
+        if(!oliList.isEmpty()){
+
+            for(OpportunityLineItem oli: oilList){
+
+                oppId.add(oli.opportunityId);
+            }
+        }
+
+        if(!oppId.isEmpty()){
+
+            List<Opportunity> oppList = [select id, Account.Name,AccountId from Opportunity where ID IN:oppId];
+
+            List<Asset> assetList = new List<Asset>();
+
+            if(!oppList.isEmpty()){
+
+                for(Opportunity opp: oppList){
+                    if(opp.Account!=null){
+
+                        Asset assetObj = new Asset();
+                        assetObj.name = opp.Account.Name +'  OpportunityLineItem';
+                        assetObj.AccountId = opp.AccountId;
+                        assetList.add(assetObj);
+                        
+                    }
+                }
+            }
+        }
+        if(!assetList.isEmpty()){
+
+            insert assetList;
+        }
+    }
+}
+
+//Trigger
+
+trigger assetTrigger on OpportunityLineItem(after insert){
+
+    if(trigger.isAfter && trigger.isInsert){
+
+        triggerHandler.triggerMethod(trigger.new);
+    }
+}

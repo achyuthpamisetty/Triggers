@@ -1,0 +1,93 @@
+public class triggerHandler{
+
+    public static void triggerMethod(List<Case> newCaseList){
+
+        Set<Id> accIds = new Set<Id>();
+        Map<id,Contact> conMap = new Map<Id,contact>();
+        List<Event> eveList = new List<Event>();
+
+        if(!newCaseList.isEmpty()){
+
+            for(Case newCase : newCaseList){
+
+                //create a set to store the Account Id's
+
+                if(!newCase.AccountId!=null && String.isNotBlank(newCase.Subject)){
+                    //In the above code cas must be tagged to an Account  & Subject have a value on the case
+
+                    //store the account id to a set
+                    accIds.add(newCase.AccountId);
+
+                }
+            }
+        }
+
+        if(!accIds.isEmpty()){
+
+            //fetch latest primary contact of account
+
+            for(contact con:[select id, AccountId, PrimaryContact from contact where PrimaryContact = true 
+                            and AccountId IN:accIds order by lastModifiedDate DESC LIMIT 1]){
+
+                //We cannot link to case so we store account id & contact in a map
+                conMap.put(con.AccountId,con);
+            }
+
+            if(!newCaseList.isEmpty()){
+
+                for(Case csRcd : newCaseList){
+
+
+                    //The user selects an account without selecting an contact & that selected account has primary contact on it
+                    
+                    if(csRcd.AccountId!=null && csRcd.ContactId == null && !conMap.isEmpty()){
+
+                        //create instance of contact record
+
+                        Contact conRcd = conMap.get(csRcd.AccountId);
+                        csRcd.ContactId = conRcd.Id;
+
+                        //create a variable to store current date time
+
+                        Datetime currentDateTime = Datetime.now();
+
+                        Datetime startDateTime = currentDateTime.addDays(2);
+                        Datetime endDateTime = startDateTime.addHours(2);
+
+
+                        Event ev = new Event();
+                        ev.subject = csRcd.Subject;
+                        ev.WhoId = conRcd.Id;
+                        ev.startDateTime = startDateTime;
+                        ev.endDateTime = endDateTime;
+                        eveList.add(ev);
+
+                        if(!eveList.isEmpty()){
+
+                            insert eveList;
+                        }
+
+                    }
+
+                    //what if there is no primary contact on account
+
+                    else if(csRcd.AccountId!=null && conMap.isEmpty()){
+
+                        csRcd.addError('There is no primary contact present on the selected account')
+                    } 
+                }
+            }
+        }
+    }
+}
+
+//Trigger
+
+trigger caseTrigger on Case(before insert){
+
+    if(Trigger.isBefore && trigger.isInsert){
+
+        triggerHandler.triggerMethod(trigger.new);
+
+    }
+}

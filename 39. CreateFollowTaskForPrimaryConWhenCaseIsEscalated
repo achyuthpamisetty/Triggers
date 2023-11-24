@@ -1,0 +1,68 @@
+public class triggerHandler{
+    public static void triggerMethod(List<Case> newCaseList, Map<Id,Case> oldCaseMap){
+
+        Set<Id> accIds = new Set<id>();
+        Map<Id,contact> conMap = new Map<Id,contact>();
+        List<Task> tasksInsert = new List<Task>();
+
+        if(!newCaseList.isEmpty()){
+
+            for(Case newCase : newCaseList){
+
+                Case oldCase = oldCaseMap.get(newCase.id);
+
+                if(newCase.EscalationRequired == true && newCase.AccountId!=null && oldCase.EscalationRequired == false){
+
+                    accIds.add(newCase.AccountId);
+                }
+            }
+        }
+
+        if(!accIds.isEmpty()){
+
+            List<Contact> conList = [select id,AccountId, PrimaryContact from Contact where AccountId IN:accIds
+                                    and PrimaryContact = true order by LastModifiedDate LIMIT 1];
+            
+            for(contact con: conList){
+
+                conMap.put(con.AccountId,con);
+            }
+
+            for(Case caseRcd: newCaseList){
+
+                if(!conMap.isEmpty() && conMap.containsKey(caseRcd.AccountId)){
+
+                    contact primarycon = conMap.get(caseRcd.AccountId);
+
+                    Task tsk = new Task();
+                    tsk.subject ='Follow up Task ';
+                    tsk.WhoId = primarycon.Id;
+                    tsk.Status = 'Not Started';
+                    tsk.Priority = 'High';
+                    tsk.Description = 'This task is related to case';
+                    tasksInsert.add(tsk);
+
+                }
+            }
+
+            try{
+                insert tasksInsert;
+
+            }catch(exception ex){
+                system.debug('Error while inserting case records:'+ex.getMessage());
+            }
+
+        }
+    }
+}
+
+//trigger
+trigger CaseTrigger on Case(after update){
+
+    if(trigger.isAfter && trigger.isUpdate){
+
+        triggerHandler.triggerMethod(trigger.new, trigger.oldMap);
+    }
+}
+
+        

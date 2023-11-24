@@ -1,0 +1,82 @@
+public class triggerHandler{
+
+    public static void triggerMethod(List<Lead> leadList){
+
+        Set<Id> convertedLeadIds = new Set<Id>();
+
+        if(!leadList.isEmpty()){
+
+            for(Lead leadObj : leadList){
+
+                //to store the lead Id whenever its get converted
+                //and also need to check the lead has been converted or not
+                if(leadObj.IsConverted){
+
+                    //if the above condition is true we need to store the Id in set
+                    convertedLeadIds.add(leadObj.id);
+                }
+            }
+        }
+
+        if(!convertedLeadIds.isEmpty()){
+
+            //Fetch all the Id's of contact , account & opportunity after lead conversion
+
+            Map<Id,Lead> leadMap = new Map<Id,Lead>([select id, name, convertedAccountId, convertedContactId, convertedOpportunityId from Lead
+                                                    where ID IN:convertedLeadIds]);
+
+            List<Account> accListUpdate = new List<Account>();
+            List<Contact> conListUpdate = new List<Contact>();
+            List<Opportunity> oppListUpdate = new List<Opportunity>();
+
+            //convertedAccountId > stores Account ID when lead is converted
+            //convertedContactId > stores Contact ID when lead is converted
+            //convertedOpportunityId > stores Opportunity ID when lead is converted
+
+            for(Lead leadRcd :leadMap.values()){
+
+                if(leadRcd.ConvertedAccountId!=null){
+
+                    Account acc = new Account();
+                    acc.Id = leadRcd.ConvertedAccountId;
+                    acc.Active = 'Yes';
+                    accListUpdate.add(acc);
+                }
+                if(leadRcd.ConvertedContactId!=null){
+
+                    contact con = new contact();
+                    con.id = leadRcd.ConvertedContactId;
+                    con.LeadContact = true;  //leadcontact is a checkbox
+                    conListUpdate.add(con);
+
+                }
+                if(leadRcd.ConvertedOpportunityId!=null{
+                    Opportunity opp = new Opportunity();
+                    opp.id = leadRcd.ConvertedOpportunityId;
+                    opp.Description = 'Lead Record Name----->'+leadRcd.Name;
+                    oppListUpdate.add(opp);
+
+                })
+            }
+        }
+        if(!accListUpdate.isEmpty()){
+            update accListUpdate;
+        }
+        if(!conListUpdate.isEmpty()){
+            update conListUpdate;
+        }
+        if(!oppListUpdate.isEmpty()){
+            update oppListUpdate;
+        }
+    }
+}
+
+//Trigger
+
+trigger leadTrigger on Lead(after update){
+
+    if(trigger.isAfter && trigger.isUpdate){
+
+        triggerHandler.triggerMethod(trigger.new);
+    }
+}

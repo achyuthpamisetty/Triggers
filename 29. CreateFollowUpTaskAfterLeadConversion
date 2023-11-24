@@ -1,0 +1,111 @@
+public class triggerHandler{
+
+    public static void triggerMethod(List<Lead> newLeadList, Mal<Id,Lead> oldMap){
+
+        List<Lead> convertedLeads = new List<Lead>();
+
+        Set<Id> convertedAccIds = new Set<Id>();
+        Set<Id> convertedConIds = new Set<Id>();
+        Set<Id> convertedOppIds = new Set<Id>();
+        Map<Id,Account> accMap = new Map<Id,Account>();
+        Map<Id,Contact> cocMap = new Map<Id,Contact>();
+        Map<Id,Opportunity> oppMap = new Map<Id,Opportunity>();
+        List<Task> taskUpdate = new List<Task>();
+
+
+        if(!newLeadList.isEmpty()){
+
+            for(Lead newLead : newLeadList){
+
+                //apply a check only the converted leads will be processed
+                if(!oldMap.isEmpty()){
+                    
+                    //Create an instance of the old version of the lead record
+                    Lead oldLead = oldMap.get(newLead.id);
+
+                    if(newLead.isConverted && !oldLead.isConverted){            //isConverted > standard boolean field
+                        //best practise to check old values of the reord . to fetch old values we use map
+                        //if the above condition is true, we will add to the list
+                        convertedLeads.add(newLead);
+
+                        //fecth the account id
+
+                        if(newLead.ConvertedAccountId!=null){
+                            convertedAccIds.add(newLead.ConvertedAccountId);
+                        }
+                        if(newLead.ConvertedContactId!=null){
+                            convertedConIds.add(newLead.ConvertedContactId);
+                        }
+                        if(newLead.ConvertedOpportunityId!=null){
+                            convertedOppIds.add(newLead.ConvertedOpportunityId);
+                        }
+                    }
+
+                }
+            }
+        }
+
+        if(!convertedLeads.isEmpty()){
+
+            //fetch account, contact & opportunity object info so we use map
+
+            if(!convertedAccIds.isEmpty()){
+                accMap = new Map<Id,Account>([select id,Name from Account where ID IN:convertedAccIds]);
+            }
+            if(!convertedConIds.isEmpty()){
+                cocMap = new Map<Id,Contact>([select id,Name from Contact where ID IN:convertedConIds]);
+            }
+            if(!convertedOppIds.isEmpty()){
+                oppMap = new Map<Id,Opportunity>([select id,Name from Opportuntiy where ID IN:convertedOppIds]);
+            }
+
+
+            //create follow up task for the converted leads
+            //so iterate over the list
+            for(Lead leadObj : convertedLeads){
+                Task newTask = new Task();
+                newTask.Subject = 'Follow-up with Converted Leads';
+                newTask.Priority = 'Normal';
+                newTask.Status = 'Not Started';
+                newTask.ActivityDate = Date.today() + 7;
+                newTask.WhoId = leadObj.ConvertedContactId;
+                newTask.WhatId = leadObj.ConvertedOpportunityId;
+
+                //for description , declare a string variable
+                string taskDescription = 'Lead Name :' +leadObj.FirstName + '\n';
+                taskDescription += 'Lead Email:'+leadObj.Email +'\n';
+                taskDescription += 'Lead Phone: '+leadObj.Phone +'\n';
+
+                if(accMap.containsKey(leadObj.ConvertedAccountId)){
+                    Account acc = accMap.get(leadObj.ConvertedAccountId);
+                    taskDescription += 'Account Name :' +acc.Name + '\n';
+                }
+                if(conMap.containsKey(leadObj.ConvertedContactId)){
+                    Contact con = conMap.get(leadObj.ConvertedContactId);
+                    taskDescription += 'Contact Name:' +con.Name + '\n';
+                    taskDescription += 'Contact Email:' +con.Email + '\n';
+                }
+                if(oppMap.containsKey(leadObj.ConvertedOpportunityId)){
+                    Opportunity opp = oppMap.get(leadObj.ConvertedOpportunityId);
+                    taskDescription += 'Opportunity Name:' +opp.Name + '\n';
+                    taskDescription += 'Opportunity Close Date:' +opp.CloseDate + '\n';
+                }
+
+                newTask.Description = taskDescription;
+                taskUpdate.add(newTask);
+            }
+        }
+
+        if(!taskUpdate.isEmpty()){
+            insert taskUpdate;
+        }
+    }
+}
+
+//Trigger
+trigger leadTrigger on Lead(after update){
+    if(trigger.isAfter && trigger.isUpdate){
+
+        triggerHandler.triggerMethod(trigger.new,trigge.oldMap);
+    }
+}

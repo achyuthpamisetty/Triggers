@@ -1,0 +1,55 @@
+public class triggerHandler{
+
+    public static void triggerMethod(List<OpportunityContactRole> newRecordList){
+
+        Set<Id> opportunityIds = new Set<Id>();
+        Set<Id> contactIds = new Set<id>();
+        Map<String,OpoprtunityContactRole> existingRolesMap = new Map<String,OpoprtunityContactRole>();
+
+        if(!newRecordList.isEmpty()){
+
+            for(OpportunityContactRole ocr: newRecordList){
+
+                if(ocr.opportunityId != null){
+                    opportunityIds.add(ocr.opportunityId);
+                }
+                if(ocr.contactId != null){
+                    contactIds.add(ocr.contactId);
+                }
+            }
+        }
+
+        Map<Id,Opportunity> opportunitiesMap = new Map<Id,Opportunity>([Select id, isClosed from Opportunity
+                                                                        where ID IN: opportunityIds]);
+
+        
+        for(OpportunityContactRole existingRole : [Select id, contactId, OpportunityId from OpportunityContactRole
+                                                    where contactId IN : contactIds and OpportunityId IN:opportunityIds]){
+
+           existingRolesMap.put(existingRole.OpportunityId+'-'+existingRole.contactId,existingRole);                               
+        }   
+        for(OpportunityContactRole ocrRecord : newRecordList){
+            Opportunity relatedOpp = opportunitiesMap.get(ocrRecord.opportunityId);
+
+            if(relatedOpp!=null && relatedOpp.IsClosed){
+                ocrRecord.addError('Cannot Create Opportunity Contact Role on Closed Opportuntiy');
+            }
+
+            String key = ocrRecord.OpportunityId+'-'+ocrRecord.contactId;
+
+            if(existingRolesMap.containsKey(key)){
+                ocrRecord.addError('Contact Role already esist on the Opportuntiy')
+            }
+        }                                                            
+    }
+}
+
+//Trigger
+
+trigger opportunityContactRole on OpportunityContactRole (before insert){
+
+    if(trigger.isBefore && trigger.isInsert){
+
+        triggerHandler.triggerMethod(trigger.new);
+    }
+}

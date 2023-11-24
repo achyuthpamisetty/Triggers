@@ -1,0 +1,69 @@
+public class triggerHandler{
+
+    public static void triggerMethod(List<Account> accList, Map<id,Account> oldMap){
+
+        Set<Id> accIds = new Set<Id>();
+        List<contact> conList = new List<Contact>();
+        List<Opportunity> oppList = new List<Opportunity>();
+        List<contact> conListUpdate = new List<contact>();
+
+        if(!accList.isEmpty()){
+
+            for(Account newAcc : accList){
+
+                //we need to store Account Id when the Account status changes from Active to Inactive
+                //to fetch old values we use map
+                if(!oldMap.isEmpty()){
+                    //create an instance of the Account using the Map
+                    Account oldAcc = oldMap.get(newAcc.id);
+
+                    //apply a check that old status is active & new status is inactive
+                    if(newAcc.status == 'inactive' && oldAcc.status == 'Active'){
+                        //if the above condition becomes true then store the Account Id's in a set
+                        accIds.add(newAcc.id);
+                    }
+                }
+            }
+        }
+
+        if(!accIds.isEmpty()){
+
+            //update checkbox on related contacts
+            //delete all the related opps other than closed won
+
+            conList = [select id, DoNotContact from Contact where AccountId IN:accIds and DoNotContact = false ];
+            oppList = [select id from Opportunity where AccountId IN:accIds and StageName != 'Closed Won'];
+
+            if(!conList.isEmpty()){
+
+                for(Contact con : conList){
+
+                    con.DoNotContact = true;
+                    conListUpdate.add(con);
+
+                }
+            }
+            try{
+                if(!conListUpdate.isEmpty()){
+                    update conListUpdate;
+                }
+
+                if(!oppList.isEmpty){
+                    delete oppList;
+                }
+            }
+            catch(exception ex){
+                system.debug('error while doing updation or deletion:'+ex.getMessage());
+            }
+
+        }
+    }
+}
+
+//trigger
+trigger acctTrigger on Account(after update){
+
+    if(trigger.isAfter && trigger.isUpdate){
+        triggerHandler.triggerMethod(trigger.new,trigger.oldMap);
+    }
+}

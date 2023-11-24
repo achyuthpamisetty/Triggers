@@ -1,0 +1,63 @@
+//Trigger
+
+trigger userTrigger on user(after update){
+
+    List<Id> deactivatedUserId = new List<Id>();
+    Map<Id,Id> managerIdsByUserId = new Map<Id,Id>();
+
+    for(User userRecord: trigger.new){
+
+        if(userRecord.IsActive == false && trigger.oldMap.get(userRecord.id) == true){
+
+            deactivatedUserId.add(userRecord.id);
+        }
+    }
+
+    if(!deactivatedUserId.isEmpty()){
+
+        return;
+    }
+
+    for(User userRecord: [select id,managerId from user where Id IN:deactivatedUserId ]){
+
+        if(userRecord.ManagerId!=null){
+
+            managerIdsByUserId.put(userRecord.id,userRecord.ManagerId);
+        }
+    }
+    if(!managerIdsByUserId.isEmpty()){
+        return;
+    }
+
+    triggerHandler.triggerMethod(deactivatedUserId.managerIdsByUserId);
+
+}
+
+
+//Handler Class
+
+public class triggerHandler{
+
+    @future
+    public static void triggerMethod(List<id> deactivatedUserId, Map<Id,Id> managerIdsByUserId){
+
+        List<Opportunity> listUpdate = new List<Opportunity>();
+
+        for(Opportunity opp: [select id, ownerId, isClosed from Opportunity where ownerId IN:deactivatedUserId and isClosed = false]){
+
+            Id newOwnerId = managerIdsByUserId.get(opp.ownerId);
+
+            if(newOwnerId!=null){
+                opp.ownerId = newOwnerId;
+                listUpdate.add(opp);
+            }
+        }
+    }
+    if(!listUpdate.isEmpty()){
+        try{
+            update listUpdate;
+        }catch(exception ex){
+            system.debug('error while updating owner of opportuinity records: '+ex.getMessage());
+        }
+    }
+}

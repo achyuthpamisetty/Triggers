@@ -1,0 +1,141 @@
+public class triggerHandler{
+
+    public static void triggerMethod(List<Opportunity> oppList,Map<id,opportunity> oldMap){    //oppList = trigger.new
+
+    //Apply a null check on the List
+
+    Set<Id> accIds = new Set<Id>(); //to store account Ids
+    List<Account> accListUpdate = new List<Account>();
+    
+    if(!oppList.isEmpty()){
+
+        //iterate over the List
+        for(opportunity newOpp : oppList){
+
+            //In update operation there would be situation where user changes the account of the opportunity
+            //In that case we need old & new parent account , so we use oldMap
+
+            //apply null check on the map
+
+            if(oldMap != null){      //Start from here
+
+                //create instance of the opp using the above map
+
+                Opportunity oldOpp = oldMap.get(newOpp.id);
+                //here we are using get method to get all versions of opportunity records
+
+                //Now compare new account Id & old account id of the opportunity records
+
+                if(oldOpp.AccountId != newOpp.AccountId){           //this code runs only when user changes the account of the opportunity record
+                    //if the above condition gets true we will add both old & new account id in a set
+
+                    accIds.add(oldOpp.AccountId);
+                    accIds.add(newOpp.AccountId);
+                }
+                //we also need to store account id when a user changes the stageneme
+                else if(oldOpp.StageName != newOpp.StageName){
+
+                    accIds.add(newOpp.AccountId);
+                }                                           
+
+                    
+                }                                            //End of block for update operation
+
+                else{                                       //for other operations
+                    accIds.add(newOpp.AccountId);
+                }
+            }
+        }
+        //now we use the set to get all the related opportunities
+
+        //check if the set is empty
+        if(!accIds.isEmpty()){
+
+            //we need to store Account Ids & opportunities in a map, so we create map
+
+            Map<Id,List<Opportunity>> accMap = new Map<Id,List<Opportunity>>();
+
+            //Now fetch the related opportunites using the Ids in a set
+            for(Opportunity oppObj : [select Id,AccountId, stagename from Opportunity where AccountId IN:accIds]){
+
+                //We use if condition to check for each opportunity will be there be corresponding account id already existing in this map or not
+
+                if(!accMap.containsKey(oppObj).AccountId){
+
+                    //if not exists we will add key of map to the account Id & list of opportunities as value
+                    
+                    accMap.put(oppObj.AccountId,new List<Opportunity>());
+
+                    //If the accountId already exists in map we will add List<Opportuntiy> to the map as value
+                }
+
+                accMap.get(oppObj.AccountId.add(oppObj));
+                //Now we have all the related opportunities
+
+                //Now update the account field so iterate over it
+
+            }
+
+            if(Id ids : accMap.keySet()){
+                //Fetch list of opportunities corresponding to the account which is present in value of map
+
+                List<Opportunity> accOpps = accMap.get(ids);
+
+                if(!acc.isEmpty()){
+                    
+                    Boolean allClosedOpps = true;
+                    //Main part of the code
+                    for(Opportunity acc: accOpps)
+
+                    //we will make allClosedOpps false if the related opp of the stage name of account is not closed won
+
+                    if(!opp.stagename.equals('closed won')){
+
+                        //if the above condition true 
+                        allClosedOpps = false;
+                        //exit the loop by using break statement
+                        break;
+
+                    }
+                }
+
+                if(allClosedOpps){
+
+                    //if the above true
+
+                    accListUpdate.add(new Account(Id = ids,AccountStatus = 'closed'));
+
+                }
+                else{
+
+                    //if not true
+                    accListUpdate.add(new Account(Id = ids,AccountStatus = 'Open'));
+                }
+            }
+        }
+
+        //apply null check on the lsit
+        if(!accListUpdate.isEmpty()){
+
+            update accListUpdate;
+        }
+    }
+}
+
+
+//Trigger
+
+trigger updateStatus on Opportunity(after insert,after update,after delete,after undelete){
+
+    if(Trigger.isAfter && (Trigger.isInser || trigger.isUndelete){
+        triggerHandler.triggerMethod(trigger.new,null);
+        //we are passing because there is no old version of records during insert, delete or undelete
+
+    }
+    else if(Trigger.isAfter && Trigger.isUpdate){
+        triggerHandler.triggerMethod(trigger.new,trigger.oldMap);
+}
+else if(Trigger.isAfter && Trigger.isDelete){
+    triggerHandler.triggerMethod(trigger.old,null);
+}
+}

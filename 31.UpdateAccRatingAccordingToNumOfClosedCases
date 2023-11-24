@@ -1,0 +1,105 @@
+public class triggerHandler{
+
+    public static void triggerMethod(List<Case> newCaseList,Map<id,case> oldCaseMap){
+
+        Set<Id> accIds = new Set<Id>();
+        Map<Id,Integer> accCaseCountMap = new Map<id,Integer>();
+        List<Account> listUpdate = new List<Account>();
+
+        if(!newCaseList.isEmpty()){
+
+            for(Case newCase: newCaseList){
+
+                //In update operation there  could be a chance where user changes the account id for the case
+                //In that case we need both new & old account id, we use map
+                if(!oldCaseMap.isEmpty()){            //start from here
+
+                    //create an instance of the case
+
+                    Case oldcase = oldCaseMap.get(newCase.id);
+                    //compare new & old account id
+
+                    if(newCase.AccountId != oldcase.AccountId){    //this code runs only when the user changes the account of case record
+
+                        //if the above condition true we will add both the account ids to the set
+                        accIds.add(newCase.AccountId);
+                        accIds.add(oldcase.AccountId);
+
+                    }
+                    else if(oldcase.IsClosed != newCase.IsClosed){
+                        accIds.add(oldcase.AccountId);
+                    }
+                }                                               //end of block for update operation
+                    else if(newCase.IsClosed == true)
+                    {
+                        accIds.add(oldcase.AccountId);      
+                    }
+            }   
+        }
+
+        if(!accIds.isEmpty()){
+            //fetch related closed cases of an account
+
+            //using aggregate query
+            //create map to store account id & casecount
+
+            for(AggregateResult result: [select AccountId, count(Id) caseCount from Case where AccountId IN:accIds
+            and isClosed = true group by AccountId]);
+
+            //store account id & casecount in the map
+            Id accountId = (Id)result.get('AccountId');
+            Integer caseCount = (Integer)result.get('caseCount');
+            //put the data in the map
+            accCaseCountMap.put(accountId,caseCount);
+        }
+
+        //fetch account data
+        List<Account> accList = [select id, rating from Account where ID IN: accIds];
+
+        if(!accList.isEmpty()){
+
+            for(Account acc : accList){
+                //create a variable to store case count
+
+                Integer closedCaseCount = accCaseCountMap.containsKey(acc.Id) ? accCaseCountMap.get(acc.id) : 0;
+
+                //checking whether the map contains account id or not
+                //if the map contains the account id, it retrieve the count of cases related to the account otherwise '0'
+
+                //create a varaible to store the account rating
+                String accountRating;
+
+                if(closedCaseCount > 5){
+                    accountRating = 'Hot';
+                }
+                else if(closedCaseCount > 2){
+                    accountRating = 'Warm';
+                }
+                else{
+                    accountRating = 'Cold';
+                }
+                acc.Rating = accountRating;
+                listUpdate.add(acc);
+            }
+        }
+        if(!listUpdate.isEmpty()){
+            update listUpdate;
+        }
+    }
+}
+
+//Trigger
+
+trigger RatingTrigger on Case( after insert,after update,after delete, after undelete){
+
+    if(trigger.isAfter && trigger.isUpdate){
+
+        triggerHandler.triggerMethod(trigger.new,trigger.oldMap)
+    }
+    else if(trigger.isAfter && (trigger.isInsert || trigger.isUndelete)){
+        triggerHandler.triggerMethod(trigger.new,null)
+    }
+    else if(trigger.isAfter && trigger.isDelete){
+        triggerHandler.triggerMethod(trigger.old)
+    }
+}

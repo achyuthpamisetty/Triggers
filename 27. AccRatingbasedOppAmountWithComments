@@ -1,0 +1,129 @@
+public class triggerHandler{
+
+    public static void triggerMethod(List<Opportunity> oppList,Map<Id,Opportunity> oldMap){
+
+        Set<Id> accIds = new Set<Id>();
+        Map<Id,Account> acctsUpdate = new Map<Id,Account>();
+
+        if(!oppList.isEmpty()){
+
+            for(Opportunity newOpp: oppList){
+
+                //In update operation there could be situation where user changes the acoount of the opportunity record
+                //In the case we need old & new account id, we use oldmap
+
+                if(oldMap != null){    //Start from here
+
+                    //create an instance of opportunity using the above map
+
+                    Opportunity oldOpp = oldMap.get(newOpp.id);
+
+                    //compare new account id & old account if
+
+                    if(oldOpp.AccountId != newOpp.AccountId){    //this code runs when a user changes the account of the opp record
+
+                        //if the above condition is true, add the new & old account id in a set
+
+                        accIds.add(oldOpp.AccountId);
+                        accIds.add(newOpp.AccountId);
+
+                    }
+                    else if(oldOpp.Amount != newOpp.Amount){
+                        //we also need to store account id when a user changes the amount of the opp record 
+                        accIds.add(newOpp.AccountId);
+                        }                                           
+                    }                                               //End of code for update operation
+                    else{
+                        accIds.add(newOpp.AccountId);                   //for other operations
+
+                    }
+                }
+            }
+
+            //Apply null check on the set
+
+            if(!accIds.isEmpty()){
+
+                //Store the account id & opportunity in a map
+
+                Map<Id,Double> oppTotalAmountMap = new Map<Id,Double>();
+                //fetch related opps using the set
+
+                List<Opportunity> oppList = [Select id, AccountId, Amount from Opportunity where AccountId IN: accIds];
+
+                if(!oppList.isEmpty()){
+
+                    for(Opportunity oppObj: oppList){
+
+                        //looping through list of related opportunities of account
+                        //for each opportunity we will check that oppTotalAmountMap contains the AccountId associated with the opportunity
+
+                        if(oppTotalAmountMap.containsKey(oppObj.AccountId)){
+
+                            //if the map contains the Account Id
+                            //we will add amount of the opportunity to the existing value in the map
+                            oppTotalAmountMap.put(oppObj.AccountId,oppTotalAmountMap.get(oppObj.AccountId)+oppObj.Amount);
+
+                            //if the map doesn't contain account Id then we will add account id as key & amount of opp as value
+                        }
+                        else{
+
+                            oppTotalAmountMap.put(oppObj.AccountId,oppObj.Amount);
+                        }
+                    }
+                }
+
+                //iterate over ids present in the set
+                for(Id ids : accIds){
+                //this set contains the account ids of the opportunity which is been updated, inserted, deleted or undeleted
+                //by iterating over the ids we are ensuring that if only update the Accounts that are related to the changed opps
+
+                if(oppTotalAmountMap.containsKey(ids)){
+
+                    Double TotalAmount = oppTotalAmountMap.get(ids);
+                    String rating;
+
+                    Integer coldThreshold = 50000;
+                    Integer WarmThreshold = 100000;
+
+                    if(TotalAmount <= coldThreshold){
+                        rating = 'cold';
+                    }
+                    else if (TotalAmount <= WarmThreshold) {
+                        rating = 'warm';
+                    }
+                    else {
+                        rating='hot';
+                    }
+                    //update the Accounts with rating value, so create a map
+                    acctsUpdate.put(ids,new Account(Id=ids,Rating = rating));
+                }
+                //if there are no opportunities it should be null
+                else{
+                    acctsUpdate.put(ids,new Account(Id=ids,Rating = null));
+                }
+                }
+            }
+            if(!acctsUpdate.isEmpty()){
+                update acctsUpdate.values();
+            }   
+        }
+    }
+
+//Trigger
+
+trigger updateRating on Opportunity(after insert,after update,after delete, after undelete){
+
+    if(trigger.isAfter && (trigger.isInsert || trigger.isUndelete)){
+        
+        triggerHandler.triggerMethod(trigger.new,null)
+
+        //there is no old version of records after insertion or undeletion
+    }
+    else if (trigger.isAfter && trigger.isUpdate) {
+        triggerHandler.triggerMethod(trigger.new,trigger.oldMap)
+    }
+    else if (trigger.isAfter && trigger.isDelete) {
+        triggerHandler.triggerMethod(trigger.old,null)
+    }
+}

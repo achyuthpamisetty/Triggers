@@ -1,0 +1,69 @@
+public class triggerHandler{
+
+    public static void triggerMethod(List<User> newUserList){
+
+        Set<String> teamName = new Set<String>();
+        Map<String,User> managerMap = Map<String,User>();
+
+        if(!newUserList.isEmpty()){
+
+            for(User newUser: newUserList){
+                
+                //store the team name in a set only when a assign manager checkbox is checked
+
+                if(newUser.team != null && newUser.AssignManager == true){
+
+                    //if the assign manager checkbox is checked & team picklist has a value then we will add teamname in a set
+
+                    teamName.add(newUser.team);
+                }
+            }
+        }
+
+        if(!teamName.isEmpty()){
+            
+            List<User> managerList = [select id, team from user where team in:teamName and isActive = true LIMIT 1];
+
+            if(!managerList.isEmpty()){
+
+                for(User manager : managerList){
+
+                    managerMap.put(manager.Team,manager);
+
+                }
+            }
+
+            if(!newUserList.isEmpty()){
+
+                for(User userObj : newUserList){
+                    
+                    if(userObj.AssignManager == true){
+                        
+                        if(!managerMap.isEmpty() && managerMap.containsKey(userObj.team)){
+
+                            User manager = managerMap.get(userObj.team);
+
+                            if(manager != null){
+                                userObj.ManagerId = manager.id;
+                            }
+                        }
+                        else{
+                            userObj.addError('There is no other user present with '+userObj.team+' team');
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+//trigger
+
+trigger userTrigger on user (before insert){
+
+    if(trigger.isBefore && trigger.isInsert){
+
+        triggerHandler.triggerMethod(trigger.new);
+    }
+}

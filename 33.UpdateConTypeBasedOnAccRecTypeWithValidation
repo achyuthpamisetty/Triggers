@@ -1,0 +1,91 @@
+public class triggerHandler{
+
+    public static void triggerMethod(List<Contact> newList, Map<id,contact> oldMap){
+
+        Set<Id> accIds = new Set<Id>();  //to store the account Ids
+
+        Map<Id,String> accMap = new Map<Id,String>();
+
+        if(!newList.isEmpty() && oldMap == null){      //Start from
+
+            for(Contact con: newList){
+
+                if(con.AccountId != null){
+
+                    accIds.add(con.AccountId);
+                }
+            }
+
+            if(!accIds.isEmpty()){
+
+                //fetch account data
+
+                for(Account acc :[select id, RecordType.Name from Account where ID IN:accIds]){
+
+                    //map is used to store record Id & record type in a map
+
+                    accMap.put(acc.Id,acc.RecordType.Name);
+                }
+
+                //contact check field on contact
+
+                if(!newList.isEmpty()){
+
+                    for(Contact conObj: newList){
+
+                        String accountRecordType = accMap.get(conObj.AccountId);
+
+                        if(accountRecordType != null){
+
+                            if(accountRecordType == 'Lead'){
+
+                                conObj.ContactType = 'Lead';
+                            }
+                            else if(accountRecordType == 'Partner'){
+
+                                conObj.ContactType = 'Partner';
+                            }
+                            else if(accountRecordType == 'Customer'){
+
+                                conObj.ContactType = 'Customer';     
+                            }
+                        }
+                    }
+                }
+            }
+        }                                                               //End of block - Insert operation
+
+        //for update
+        else{
+            if(!newList.isEmpty()){
+
+                for(Contact conRcd: newList){
+
+                    //to fetch old values use the map method
+                    if(conRcd.contactType!=oldMap.get(conRcd.id).contactType)
+                    //if the above condition is true we will fetch account id record in a variable
+
+                    String accRecordType = accMap.get(conObj.AccountId);
+
+                    if(conRcd.contactType!=accRecordType){
+                        conRcd.Error('Contact type cannot be updated to value other than Account Record Type');
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+//Trigger
+
+trigger conTrigger on contact(before insert, before update){
+
+    if(trigger.isBefore && trigger.isInsert){
+
+        triggerHandler.triggerMethod(trigger.new, null);
+    }
+    else if(trigger.isBefore && trigger.isUpdate){
+        triggerHandler.triggerMethod(trigger.new, trigger.oldMap);
+    }
+}

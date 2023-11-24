@@ -1,0 +1,74 @@
+public class triggerHandler{
+
+    public static void triggerMethod(List<Opportunity> newOppList, Map<Id,Opportunity> oldOppMap){
+
+        //to store the opportunity id & type value we use map
+
+        Map<Id,String> oppTypeMap = new Map<Id,String>();
+
+        Set<Id> accIds = new Set<Id>();
+        Map<String,contact> oppConMap = new Map<String,contact>();
+        List<OpportunityContactRole> oppConToInsert = new List<OpportunityContactRole>();
+
+        if(!newOppList.isEmpty()){
+
+            for(Opportunity newOpp: newOppList){
+
+                Opportunity oldOpp = oldOppMap.get(newOpp.Id);
+
+                if(newOpp.AccountId != null && newOpp.Type!= oldOpp.Type){
+
+                    accIds.add(newOpp.AccountId);
+                    oppTypeMap.put(newOpp.Id,newOpp.Type);
+
+                }
+             }
+        }
+
+        if(!accIds.isEmpty() && !oppTypeMap.isEmpty()){
+
+            List<Contact> relatedContacts = [select id, type from contact where AccountId IN: accIds and type IN: oppTypeMap.values()
+                                            order by LastModifiedDate LIMIT 1];
+            
+            for(contact con: relatedContacts){
+                oppConMap.put(con.type,con);
+            }
+            for(Opportunity opp: newOppList){
+                if(oppTypeMap.containsKey(opp.Id)){
+                    contact conForType = oppConMap.get(opp.Type);
+
+                    if(conForType != null){
+                        OpportunityContactRole  oppConRole = new OpportunityContactRole();
+                        oppConRole.OpportunityId = opp.Id;
+                        oppConRole.contactId = conForType.id;
+                        oppConToInsert.add(oppConRole);
+                    }
+
+                    else{
+
+                        opp.addError('No contact found with the type '+opp.Type+'.');
+                    }
+                }
+            }
+
+            if(!oppConToInsert.isEmpty()){
+
+                List<OpportunityContactRole> existingRole = [select id from OpportunityContactRole where opportuntiyID IN:oppTypeMap.keyset()];
+                delete existingRole;
+
+                insert oppConToInsert;
+            }
+        }
+    }
+    
+}
+//TRIGGER
+
+trigger OppTrigger on Opportunity(after update){
+
+    if(trigger.isAfter && trigger.isUpdate){
+
+        triggerHandler.triggerMethod(trigger.new,trigger.oldMap);
+
+    }
+}

@@ -1,0 +1,112 @@
+public class triggerHandler{
+
+    public static void triggerMethod(List<Case> newCaseList, Map<id,case> oldCaseMap){
+
+        Map<Id,string> caseStatusMap = new Map<id,string>();
+        Set<Id> accIds = new Set<Id>();
+        List<Task> tskListUpdate = new List<Task>();
+        List<Account> accListUpdate = new List<Account>();
+        if(!newCaseList.isEmpty()){
+
+            for(Case newCase : newCaseList){
+
+                //to fetch the old value we pass another parameter called map
+
+                if(!oldCaseMap.isEmpty()){
+                    //create an instance of the case using the map
+
+                    Case oldCase = oldCaseMap.get(newCase.id);
+
+                    //compare old & new value of the case status
+
+                    if(oldCase.Status!= newCase.Status && newCase.AccountId!=null){
+
+                        //if the above condition is true store the case id & status in a map
+
+                        caseStatusMap.put(newCase.id,newCase.Status);
+                        accIds.add(newCase.AccountId);
+                    }
+                }
+
+            }
+        }
+
+        if(!caseStatusMap.isEmpty()){
+
+            //fetch the related tasks of case using soql
+
+            List<Task> tskList = [select id, status, whatId from Task where WhatId IN:caseStatusMap.keySet() ];
+
+            if(!tskList.isEmpty()){
+
+                for(Task tsk : tskList){
+
+                    //we need to update the Task Status by Case Status
+                    //create string variable to store case status & we have case status in value of this map caseStatusMap
+
+                    String caseStatus;
+                    if(caseStatusMap.containsKey(tsk.WhatId)){
+
+                        //if it contains simply fetch value of the map which is case status using whatId of task and store in the variable
+
+                        caseStatus = caseStatusMap.get(tsk.WhatId);
+
+                    }
+
+                    tsk.Status = caseStatus;
+                    tskListUpdate.add(tsk);
+
+                    //create a list of task
+                }
+                if(!tskListUpdate.isEmpty()){
+                    update tskListUpdate;
+                }
+            }
+        }
+
+        //updating account's description
+
+        if(!accIds.isEmpty()){
+
+            //fetch account data in map
+            Map<id,Account> accountMap = new Map<Id,Account>([select id,description from Account where ID IN:accIds]);
+
+            Map<Id,Case> latestCaseMap = new Map<Id,Case>();
+
+            for(Case cs: [select AccountId, CaseNumber, Status from Case where AccountId IN: accIds and Status !=null]){
+
+                //to store the case & account id we create a map
+                if(!latestCaseMap.containsKey(cs.AccountId)){
+
+                    latestCaseMap.put(cs.AccountId,cs);
+                }
+                
+            }
+
+            for(Account acc: accountMap.values()){
+
+                if(latestCaseMap.containsKey(acc.id)){
+
+                    Case latestCase = latestCaseMap.get(acc.id);
+
+                    acc.Description = 'Latest Case Status for Case :'+latestCase.CaseNumber+' is:'+latestCase.Status;
+                    accListUpdate.add(acc);
+                }
+            }
+
+            if(!accListUpdate.isEmpty()){
+                update accListUpdate;
+            }
+        }
+    }
+}
+
+//Trigger
+
+trigger caseTrigger on Case(after update){
+
+    if(trigger.isAfter && trigger.isUpdate){
+
+        triggerHandler.triggerMethod(trigger.new,trigger.oldMap);
+    }
+}

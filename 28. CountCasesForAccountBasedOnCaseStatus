@@ -1,0 +1,105 @@
+public class triggerHandler{
+
+    public static void triggerMethod(List<Case> newList,Map<Id,Case> oldMap){
+
+        Set<Id> accIds = new Set<Id>();
+        Map<Id,Integer> newCaseCountMap = new Map<Id,Integer>(); //this map used to store count of status with "New"
+        Map<Id,Integer> workingCaseCountMap = new Map<Id,Integer>();
+        Map<Id,Integer> escalatedCaseCountMap = new Map<Id,Integer>();
+        Map<Id,Account> accUpdate = new Map<Id,Account>();
+
+        if(!newList.isEmpty()){
+
+            for(Case newCase : newList){
+
+                //In update operation there could be a chance where user changes the account id of the case record
+                //In that case we need both new account & old account id
+                //to get that we use oldmap
+                //null check on map
+                if(!oldMap.isEmpty()){                      //Start from here
+                    
+                    Case oldCase = oldMap.get(newCase.Id);
+                    //using get method to fetch old version of the case records
+
+                    //compare new account & old parent account id
+
+                    if(oldCase.AccountId != newCase.AccountId){             //this code runs when user changes the account id of the case record
+                        //if the above condition is true, add the ids to the set
+
+                        accIds.add(oldCase.AccountId);
+                        accIds.add(newCase.AccountId);
+                    }
+                    else if(oldCase.Status != newCase.Status){
+
+                        //we also need to store the account id when a user change the status of the case
+                        accIds.add(newCase.AccountId);
+                    }
+                }                                               //end of block for update operation
+                else{
+                    accIds.add(newCase.AccountId);                  //for other operations
+                }
+            }
+            if(!accIds.isEmpty()){
+
+                //to store the count of records in map accroding to their status 
+
+                for(Account acc: [select id, NumberofNewCases, NumberofWorkingCases,NumberofEscalatedCases,(select id,status form cases) from Account where ID IN:accIds]){
+                    newCaseCountMap.put(acc.Id,0);  //for value we put '0' as initial value to represent intial count of cases for each account
+                    workingCaseCountMap.put(acc.Id,0);
+                    escalatedCaseCountMap.put(acc.Id,0);
+
+                    //iterate over related cases
+                    for(Case caseObj: acc.Cases){
+
+                        if(caseObj.status =='New'){
+                            newCaseCountMap.put(acc.id, newCaseCountMap.get(acc.id)+1);
+                        }
+                        else if (caseObj.status =='Working') {
+                            workingCaseCountMap.put(acc.id, workingCaseCountMap.get(acc.id)+1);
+                        }
+                        else if (caseObj.status =='Escalated') {
+                            escalatedCaseCountMap.put(acc.id, escalatedCaseCountMap.get(acc.id)+1);
+                        }
+
+                    }
+
+                    //We are checking the count of cases in map for the current account is not equal to the value stored in the custom field of account
+                    //purpose of comparing these values is to determine if the count of new case has changed or not
+                    //if the count are not equal then it implies there has been a change in the nUmber of new cases
+                    if(newCaseCountMap.get(acc.id)!= acc.NumberofNewCases || 
+                    workingCaseCountMap.get(acc.id) != acc.NumberofWorkingCases||
+                    escalatedCaseCountMap.get(acc.id) != acc.NumberofEscalatedCases){
+
+                        acc.NumberofNewCases.newCaseCountMap.get(acc.id);
+                        acc.NumberofWorkingCases = workingCaseCountMap.get(acc.id);
+                        acc.NumberofEscalatedCases = escalatedCaseCountMap.get(acc.id);
+                        accUpdate.put(acc.id,acc);
+
+                    }
+                }
+
+            }
+            if(!accUpdate.isEmpty())
+            {
+                update accUpdate.values()
+            }
+
+        }
+    }
+}
+
+//Trigger
+
+trigger updateCaseCount on Case (after insert,after update, after delete, after undelete){
+
+    if(trigger.isAfter && (trigger.isInsert || trigger.isUndelete)){
+
+    triggerHandler.triggerMethod(trigger.new,null);
+    }
+    else if (trigger.isAfter && trigger.isUpdate) {
+        triggerHandler.triggerMethod(trigger.new,trigger.oldMap);
+    }
+    else if(trigger.isAfter && trigger.isDelete){
+        triggerHandler.triggerMethod(trigger.old,null);
+    }
+}

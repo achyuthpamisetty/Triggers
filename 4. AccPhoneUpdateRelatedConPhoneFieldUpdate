@@ -10,7 +10,8 @@ trigger AccountTrigger on Account(after update){
         if(!Trigger.new.isEmpty()){
             
             for(Account acc : trigger.new){
-                
+
+                //to check the user entered the value which is not equal to the old value
                 if(trigger.oldMap.get(acc.id).phone!=acc.phone){
                     
                     accMap.put(acc.id,acc);

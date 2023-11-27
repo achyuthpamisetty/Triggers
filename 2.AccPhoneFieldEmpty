@@ -1,0 +1,15 @@
+trigger AccountTrigger on Account(before insert){
+
+    if(trigger.isBefore && trigger.isInsert){
+
+        if(trigger.new.isEmpty()){
+
+            for(Account acc: trigger.new){
+
+                if(acc.phone == null)
+
+                acc.addError('You cannot insert account with the phone field empty');
+            }
+        }
+    }
+}

@@ -20,7 +20,7 @@ trigger ContactTrigger on Contact(after update){
     }
 
     if(!accIds.isEmpty){    
-    Map<Id,Account> mapAcc = [(select id, name ,phone ,description from Account where Id in:accIds)];
+    Map<Id,Account> mapAcc = new Map<Id,Account>([select id, name ,phone ,description from Account where Id in:accIds]);
     
     List<Account> listtoUpdate = new List<Account>();
     

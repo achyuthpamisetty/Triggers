@@ -27,7 +27,7 @@ trigger AccountTrigger on Account (after update){
 
             for(Opportunity opp: oppList){
 
-                if(opp.TestCreatedDate < day30 && opp.stageName == ' Closed Won'){
+                if(opp.TestCreatedDate < day30 && opp.stageName != ' Closed Won'){
 
                     opp.stageName = 'closed lost';
                     opp.closeDate = date.today();

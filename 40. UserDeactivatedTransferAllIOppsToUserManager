@@ -2,21 +2,27 @@
 
 trigger userTrigger on user(after update){
 
-    List<Id> deactivatedUserId = new List<Id>();
-    Map<Id,Id> managerIdsByUserId = new Map<Id,Id>();
+    List<Id> deactivatedUserId = new List<Id>();  //to store the deactivated user Id's
+    Map<Id,Id> managerIdsByUserId = new Map<Id,Id>();  //store user Id in key & corresponding manager Id in value
 
     for(User userRecord: trigger.new){
 
         if(userRecord.IsActive == false && trigger.oldMap.get(userRecord.id) == true){
+    //above line checks the current user is not active && old version of the same user is active
 
             deactivatedUserId.add(userRecord.id);
+    //Add those Id's into the list
         }
     }
 
     if(!deactivatedUserId.isEmpty()){
 
+    //If there are no any deactivated users then exit the trigger
+
         return;
     }
+
+    //Get the Manager Id for the deactivated user & store in the Map
 
     for(User userRecord: [select id,managerId from user where Id IN:deactivatedUserId ]){
 
@@ -39,13 +45,15 @@ trigger userTrigger on user(after update){
 public class triggerHandler{
 
     @future
+
+    //pass the list & map that created in the trigger
     public static void triggerMethod(List<id> deactivatedUserId, Map<Id,Id> managerIdsByUserId){
 
         List<Opportunity> listUpdate = new List<Opportunity>();
 
         for(Opportunity opp: [select id, ownerId, isClosed from Opportunity where ownerId IN:deactivatedUserId and isClosed = false]){
 
-            Id newOwnerId = managerIdsByUserId.get(opp.ownerId);
+            Id newOwnerId = managerIdsByUserId.get(opp.ownerId);  //store manager Id of current owner of opp record
 
             if(newOwnerId!=null){
                 opp.ownerId = newOwnerId;

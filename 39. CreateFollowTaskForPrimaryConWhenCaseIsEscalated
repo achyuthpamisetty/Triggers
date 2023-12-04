@@ -23,9 +23,9 @@ public class triggerHandler{
             List<Contact> conList = [select id,AccountId, PrimaryContact from Contact where AccountId IN:accIds
                                     and PrimaryContact = true order by LastModifiedDate LIMIT 1];
             
-            for(contact con: conList){
+            for(contact con: conList){    
 
-                conMap.put(con.AccountId,con);
+                conMap.put(con.AccountId,con);    //to avoid nested for loop we store conList in a map
             }
 
             for(Case caseRcd: newCaseList){
